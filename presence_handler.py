@@ -17,11 +17,11 @@ def HandlePresence(client, presence):
     user = presence.getFrom()
     name = user.getStripped().split('@', 1)[0]
     status = presence.getStatus()
-    type = presence.getType()
+    update_type = presence.getType()
     show = presence.getShow()
 
     # If they invite us, automatically accept
-    if type == 'subscribe':
+    if update_type == 'subscribe':
         client.getRoster().Authorize(user)
 
     # If someone becomes available, greet them
