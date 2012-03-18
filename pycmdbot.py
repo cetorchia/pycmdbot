@@ -5,6 +5,7 @@ Google Talk (or Jabber) bot that takes commands
 
 import os
 import ConfigParser
+import traceback
 
 import xmpp
 
@@ -75,12 +76,17 @@ class PyCmdBot():
         @param: message
         '''
         user = message.getFrom()
+        username = user.getStripped()
         body = message.getBody().strip()
 
         # Run the first command whose pattern matches the message
         for p, command in commands.command_list:
             if p.search(body):
-                response = command(self.client, message)
+                try:
+                    response = command(username, body)
+                except Exception, e:
+                    response = 'error: %s' % str(e)
+                    traceback.print_exc()
                 self.client.send(xmpp.Message(user, response))
                 break
 
