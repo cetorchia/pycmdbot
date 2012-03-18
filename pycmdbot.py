@@ -87,7 +87,9 @@ class PyCmdBot():
                 except Exception, e:
                     response = 'error: %s' % str(e)
                     traceback.print_exc()
-                self.client.send(xmpp.Message(user, response))
+                self.client.send(xmpp.Message(user, response,
+                                              typ='chat',
+                                              attrs={'iconset':'round'}))
                 break
 
     def HandlePresence(self, client, presence):

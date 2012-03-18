@@ -11,6 +11,8 @@ in their own modules.
 import re
 import time
 
+import google_bus_times
+
 time_command_re = re.compile(r'^what(\'s|\s+is)?(\s+the)?\s+time(\s+is\s+it)?[^a-zA-Z]*$')
 def TimeCommand(username, message):
     '''
@@ -31,9 +33,37 @@ def EvalCommand(username, message):
     expression = match.group(1)
     return str(eval(expression))
 
+bus_times_command_re = re.compile(r'(?i)^when(?:\s+(?:is|are))?(?:\s+the)?\s+bus(?:es)?'
+                                  r'\s+from\s+(.*?)'
+                                  r'\s+to\s+(.*?)'
+                                  r'(?:\s+at\s+(.*?))?'
+                                  r'(?:\s+on\s+(.*?))?'
+                                  r'\s*\?*$')
+def BusTimesCommand(username, message):
+    '''
+    @param username: the id of the user
+    @param message: the message string
+    '''
+    match = bus_times_command_re.search(message)
+    source = match.group(1)
+    destination = match.group(2)
+    if match.group(3):
+        time = match.group(3)
+    else:
+        time = None
+    if match.group(4):
+        date = match.group(4)
+    else:
+        date = None
+    bus_times = google_bus_times.GetGoogleBusTimes(source, destination, time, date)
+    bus_times_str = '\n'.join(['*%s*: %s' % (', '.join(buses), time)
+                               for buses, time in bus_times])
+    return bus_times_str
+
 # This list provides regexes that we use to match the user's message.
 # If the message matches the regex, the command gets run.
 command_list = [
     (time_command_re, TimeCommand),
     (eval_command_re, EvalCommand),
+    (bus_times_command_re, BusTimesCommand),
 ]
