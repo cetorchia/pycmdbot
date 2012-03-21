@@ -11,6 +11,7 @@ import ConfigParser
 import optparse
 import traceback
 import csv
+import time
 
 import xmpp
 
@@ -148,7 +149,7 @@ class PyCmdBot():
         if self.log_messages or self.log_presence:
             self.log_fh = open(self.log_file, 'w')
             self.log_writer = csv.writer(self.log_fh)
-            self.log_writer.writerow(['User', 'Message', 'Update Type', 'Show', 'Status'])
+            self.log_writer.writerow(['Time', 'User', 'Message', 'Update Type', 'Show', 'Status'])
             self.log_fh.flush()
 
     def PrintVars(self):
@@ -233,13 +234,14 @@ class PyCmdBot():
         @param show (str): 'dnd', etc.
         @param status (str)
         '''
+        cur_time = time.asctime()
         if self.log_messages and message:
             # Message event
-            self.log_writer.writerow([username, message, None, None, None])
+            self.log_writer.writerow([cur_time, username, message, None, None, None])
             self.log_fh.flush()
         elif self.log_presence:
             # Status update event
-            self.log_writer.writerow([username, None, update_type, show, status])
+            self.log_writer.writerow([cur_time, username, None, update_type, show, status])
             self.log_fh.flush()
 
 def Main():
