@@ -63,7 +63,9 @@ def BusTimesCommand(username, message):
 # This list provides regexes that we use to match the user's message.
 # If the message matches the regex, the command gets run.
 command_list = [
-    (time_command_re, TimeCommand),
-    (eval_command_re, EvalCommand),
-    (bus_times_command_re, BusTimesCommand),
+    ('time', time_command_re, TimeCommand),
+    ('eval', eval_command_re, EvalCommand),
+    ('bus_times', bus_times_command_re, BusTimesCommand),
 ]
+
+command_names = [item[0] for item in command_list]
