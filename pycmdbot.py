@@ -5,6 +5,7 @@ And logs friends' status updates and messages.
 @author: Carlos E. Torchia <ctorchia87@gmail.com>
 '''
 
+import re
 import os
 import sys
 import ConfigParser
@@ -25,21 +26,40 @@ __DEFAULT_RESOURCE__ = 'PyCmdBot'
 __DEFAULT_CONFIG_FILE__ = os.path.join(os.getenv('HOME'), '.pycmdbot')
 __DEFAULT_LOG_FILE__ = os.path.join(os.getenv('HOME'), '.pycmdbot-log')
 
+__DEFAULT_SHOW__ = 'available'
+
 class PyCmdBot():
     '''
     XMPP client that takes commands and logs friends' activity
     '''
 
-    def __init__(self, commands=[], **options):
+    def __init__(self, domain, hostname, port, resource,
+                 username, password,
+                 log_file, log_presence, log_messages,
+                 accept_invites, show, status,
+                 all_commands, commands):
         '''
-        @param commands: the names of the commands we will respond to
-        @param options: various behaviour options, see ReadOptions()
         '''
+        self.domain = domain
+        self.hostname = hostname
+        self.port = port
+        self.resource = resource
+
+        self.username = username
+        self.password = password
+
+        self.log_file = log_file
+        self.log_presence = log_presence
+        self.log_messages = log_messages
+
+        self.accept_invites = accept_invites
+        self.show = show
+        self.status = status
+
+        self.all_commands = all_commands
         self.commands = commands
-        self.ReadOptions(options)
-        self.ReadConfig()
+
         self.SetUpLogFile()
-        self.PrintVars()
 
     def Run(self):
         '''
@@ -48,7 +68,7 @@ class PyCmdBot():
         self.Connect()
         self.client.RegisterHandler('message', self.HandleMessage)
         self.client.RegisterHandler('presence', self.HandlePresence)
-        self.client.sendInitPresence()
+        self.SetPresence()
         self.RunForever()
 
     def Connect(self):
@@ -75,72 +95,6 @@ class PyCmdBot():
                     self.log_fh.close()
                 return
 
-    def ReadOptions(self, options):
-        '''
-        @param options: command line options in dict format. Keys:
-                        - config_file (str),
-                        - log_file (str)
-                        - log_presence (bool),
-                        - log_messages (bool),
-                        - accept_invites (bool),
-                        - all_commands (bool),
-        @postcondition: certain instance variables are set if present in
-                        command line options
-        '''
-        if options.get('config_file'):
-            self.config_file = options['config_file']
-        else:
-            self.config_file = __DEFAULT_CONFIG_FILE__
-
-        if options.get('log_file'):
-            self.log_file = options['log_file']
-        else:
-            self.log_file = __DEFAULT_LOG_FILE__
-
-        self.log_presence = options['log_presence']
-        self.log_messages = options['log_messages']
-        self.accept_invites = options['accept_invites']
-        self.all_commands = options['all_commands']
-
-    def ReadConfig(self):
-        '''
-        @precondition: ReadOptions() has been run
-        @postcondition: certain instance variables are retrieved from config file
-                        if present (see below)
-        @raise: an Exception if username or password missing
-        @attention: do not put '@gmail.com' after username
-        '''      
-        config = ConfigParser.RawConfigParser()
-        config.read(self.config_file)
-
-        # If server is not in config file, use default.
-        try:
-            self.domain = config.get('settings', 'domain')
-        except:
-            self.domain = __DEFAULT_DOMAIN__
-        try:
-            self.hostname = config.get('settings', 'hostname')
-        except:
-            self.hostname = __DEFAULT_HOSTNAME__
-        try:
-            self.port = config.get('settings', 'port')
-        except:
-            self.port = __DEFAULT_PORT__
-        try:
-            self.resource = config.get('settings', 'resource')
-        except:
-            self.resource = __DEFAULT_RESOURCE__
-
-        # Require username and password to be in config file
-        try:
-            self.username = config.get('settings', 'username')
-        except:
-            raise Exception('Username missing from %s' % self.config_file)
-        try:
-            self.password = config.get('settings', 'password')
-        except:
-            raise Exception('Password missing from %s' % self.config_file)
-
     def SetUpLogFile(self):
         '''
         Set up a log file, only if we need one
@@ -152,30 +106,12 @@ class PyCmdBot():
             self.log_writer.writerow(['Time', 'User', 'Message', 'Update Type', 'Show', 'Status'])
             self.log_fh.flush()
 
-    def PrintVars(self):
+    def SetPresence(self):
         '''
-        @precondition: ReadConfig() and ReadOptions() have been run
-        @postcondition: instance vars like username have been printed to stdout
+        Sets the status of the bot
+        Gets this from self.show (availability) and self.status (message)
         '''
-        print '# PyCmdBot initialized!'
-        print '#'
-        print '#  Config file:        ', self.config_file
-        print '#  Log file:           ', self.log_file
-        print '#'
-        print '#  Domain:             ', self.domain
-        print '#  Hostname:           ', self.hostname
-        print '#  Port:               ', self.port
-        print '#  Resource:           ', self.resource
-        print '#'
-        print '#  Username:           ', self.username
-        print '#'
-        print '#  Log status updates: ', self.log_presence
-        print '#  Log messages:       ', self.log_messages
-        print '#  Accept invites:     ', self.accept_invites
-        print '#  All commands:       ', self.all_commands
-        print '#'
-        print '#  Commands:           ', ', '.join(self.commands)
-        print '#'
+        self.client.send(xmpp.Presence(show=self.show, status=self.status))
 
     def HandleMessage(self, client, message):
         '''
@@ -234,7 +170,7 @@ class PyCmdBot():
         @param show (str): 'dnd', etc.
         @param status (str)
         '''
-        cur_time = time.asctime()
+        cur_time = time.time()
         if self.log_messages and message:
             # Message event
             self.log_writer.writerow([cur_time, username, message, None, None, None])
@@ -248,43 +184,99 @@ def Main():
     '''
     Main method
     '''
-    options, commands = ParseArgs()
-    bot = PyCmdBot(commands, **options)
+    config_file = ParseArgs()
+    settings = ReadConfig(config_file)
+    bot = PyCmdBot(**settings)
     bot.Run()
 
-def ParseArgs():
+def ReadConfig(config_file):
     '''
-    @return: command line options, arguments
+    @param config_file: filename of the config file
+    @return: a dict containing variables that you can use as kwargs to
+             PyCmdBot()
     '''
-    opt_parser = optparse.OptionParser()
-    opt_parser.add_option('-c', '--config', dest='config_file',
-                          help='specify alternate config file')
-    opt_parser.add_option('-l', '--log-file', dest='log_file',
-                          help='specify alternate log file')
-    opt_parser.add_option('-u', '--log-updates', dest='log_presence',
-                          action='store_true', default=False,
-                          help='log status updates')
-    opt_parser.add_option('-m', '--log-messages', dest='log_messages',
-                          action='store_true', default=False,
-                          help='log incoming messages')
-    opt_parser.add_option('-i', '--accept-invites', dest='accept_invites',
-                          action='store_true', default=False,
-                          help='accept any subscriptions from new users')
-    opt_parser.add_option('-a', '--all', dest='all_commands',
-                          action='store_true', default=False,
-                          help='enable all commands')
-    opt_parser.set_usage('pycmdbot.py [options] command1 command2 ...')
-    options, args = opt_parser.parse_args()
+    defaults = {
+        'domain': __DEFAULT_DOMAIN__,
+        'hostname': __DEFAULT_HOSTNAME__,
+        'port': __DEFAULT_PORT__,
+        'resource': __DEFAULT_RESOURCE__,
+        'log_file': __DEFAULT_LOG_FILE__,
+        'log_presence': 'false',
+        'log_messages': 'false',
+        'accept_invites': 'false',
+        'all_commands': 'false',
+        'commands': '',
+        'show': __DEFAULT_SHOW__,
+        'status': '',
+    }
+    config = ConfigParser.RawConfigParser(defaults=defaults)
+    config.read(config_file)
+
+    settings = {
+        'domain': config.get('server', 'domain'),
+        'hostname': config.get('server', 'hostname'),
+        'port': config.get('server', 'port'),
+        'resource': config.get('bot', 'resource'),
+        'log_file': config.get('bot', 'log_file'),
+        'log_presence': config.getboolean('bot', 'log_presence'),
+        'log_messages': config.getboolean('bot', 'log_messages'),
+        'accept_invites': config.getboolean('bot', 'accept_invites'),
+        'all_commands': config.getboolean('bot', 'all_commands'),
+        'show': config.get('bot', 'show'),
+        'status': config.get('bot', 'status'),
+    }
+
+    # Timestamp the log file
+    if '%d' in settings['log_file']:
+        settings['log_file'] = settings['log_file'] % int(time.time())
+
+    # Parse the list of commands
+    commands_str = config.get('bot', 'commands').strip()
+    if commands_str:
+        settings['commands'] = re.split(r'\s*,\s*', commands_str)
+    else:
+        settings['commands'] = []
+
+    # Require username and password to be in config file
+    try:
+        settings['username'] = config.get('account', 'username')
+    except:
+        print >>sys.stderr, 'Username missing from %s' % config_file
+        sys.exit(1)
+    try:
+        settings['password'] = config.get('account', 'password')
+    except:
+        print >>sys.stderr, 'Password missing from %s' % config_file
+        sys.exit(1)
 
     # Ensure valid command names
-    for cmd_name in args:
+    for cmd_name in settings['commands']:
         if cmd_name not in commands.command_names:
             print >>sys.stderr, 'Invalid command name: %s' % cmd_name
             print >>sys.stderr, 'Valid command names:\n  %s' % \
                                 '\n  '.join(commands.command_names)
             sys.exit(1)
 
-    return options.__dict__, args
+    return settings
+
+def ParseArgs():
+    '''
+    @return: config filename
+    '''
+    opt_parser = optparse.OptionParser()
+    opt_parser.add_option('-c', '--config', dest='config_file',
+                          help='specify alternate config file')
+    options, args = opt_parser.parse_args()
+
+    if args:
+        opt_parser.print_usage()
+        sys.exit(1)
+
+    config_file = options.config_file
+    if not config_file:
+        config_file = __DEFAULT_CONFIG_FILE__
+
+    return config_file
 
 if __name__ == '__main__':
     Main()
