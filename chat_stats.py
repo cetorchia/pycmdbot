@@ -17,12 +17,18 @@ import optparse
 # Import ChartDirectory
 pychartdir_path = os.path.abspath(os.path.join(__file__, '..', '..', 'ChartDirector', 'lib'))
 sys.path.append(pychartdir_path)
-import pychartdir
+try:
+    import pychartdir
+except ImportError, e:
+    print >>sys.stderr, 'Please install ChartDirector for Python in %s' % pychartdir_path
+    print >>sys.stderr, str(e)
+    sys.exit(1)
 
 __DEFAULT_PORT__ = 8080
 __DEFAULT_LOG_DIR__ = '.'
+__DEFAULT_PASSWORD__ = 'kiki'
 
-path_png_re = re.compile(r'^\/(.+)\.png$')
+path_png_re = re.compile(r'^\/(.+?)(?:/(\w+))?\.png$')
 email_re = re.compile(r'^([^@]+)@([^@]+)$')
 
 class ChatStatsHTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
@@ -32,7 +38,7 @@ class ChatStatsHTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         '''
         self.send_response(200)
 
-        if self.path == '/':
+        if self.path == '/' + password:
             # Get home page
             self.send_header('Content-Type', 'text/html')
             self.end_headers()
@@ -41,22 +47,38 @@ class ChatStatsHTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                        '<title>Chat Stats</title>'
                        '</head>'
                        '<body>'
-                       '<h2>Daily availability charts</h2>'
+                       '<h2>Chat User Availability Charts</h2>'
                        '<p>Select a user:</p>'
                        '<ul>')
             usernames = GetUsernames()
             for username in usernames:
-                content += '<li><a href="/%s.png">%s</a></li>' % (username, username)
+                content += '<li><a href="/%s.png">%s</a>: ' % (username, username)
+                content += '<a href="/%s/daily.png">last day</a>, ' % username
+                content += '<a href="/%s/weekly.png">last week</a></li>' % username
             content += '</ul>'
             content += '</body></html>'
         else:
             # Get a user's stats PNG
             match = path_png_re.search(self.path)
             if match:
+                # Parse chart request
                 username = match.group(1)
+                if match.group(2):
+                    since_when_str = match.group(2)
+                else:
+                    since_when_str = 'forever'
+                if since_when_str == 'daily':
+                    since_when = 24
+                elif since_when_str == 'weekly':
+                    since_when = 168
+                else:
+                    since_when = None
+
+                # Compute the chart
+                content = GetUserHoursPNG(username, since_when)
+
                 self.send_header('Content-Type', 'image/png')
                 self.end_headers()
-                content = GetUserHoursPNG(username)
             else:
                 self.send_error(404)
                 return
@@ -90,20 +112,25 @@ def GetUsernames():
     usernames.sort(key=lambda username: -count.get(username))
     return usernames
 
-def GetUserHoursPNG(username):
+def GetUserHoursPNG(username, since_when):
     '''
     @param username: Username of user for whom to get stats PNG e.g. 'pycmdbot'
+    @param since_when: Timeframe. only consider status from this long ago. can be None
+                       for forever.
     @return: A string of bytes of the PNG representing a stats graph for the
              given user. This presents the minutes they are signed on in each
              hour of each day.
     '''
-    hours = GetUserHours(username)
+    hours = GetUserHours(username, since_when)
     png_data = GetPNGForUserHours(username, hours)
     return png_data
 
-def GetUserHours(username):
+def GetUserHours(username, since_when):
     '''
     @param username: Username of user for whom to get stats
+    @param since_when: Timeframe. only consider status from this long ago. can be None
+                       for forever.
+    Assumption: logs are in order of ascending timestamp
     @return: A dict mapping hour (0-23) to a number of minutes
     '''
     log_files = GetLogFiles(log_dir)
@@ -111,6 +138,9 @@ def GetUserHours(username):
              13:0, 14:0, 15:0, 16:0, 17:0, 18:0, 19:0, 20:0, 21:0, 22:0, 23:0}
     earliest = ()
     latest = None
+    if since_when:
+        # Get when to start in seconds since Epoch
+        since_when = time.time() - since_when * 3600.0
     for log_file in log_files:
         print 'Getting user hours in %s' % log_file
         reader = csv.reader(open(log_file, 'rb'))
@@ -125,6 +155,8 @@ def GetUserHours(username):
         try:
             for row in reader:
                 now = GetTime(columns, row)
+                if now < since_when:
+                    continue
                 if now < earliest: earliest = now
                 if now > latest: latest = now
                 if not signed_on_since:
@@ -136,7 +168,10 @@ def GetUserHours(username):
                 UpdateUserHoursForInterval(hours, signed_on_since, now)
         except csv.Error, e:
             print >>sys.stderr, 'Error: ', str(e)
-    days = (latest - earliest) / 86400.0
+    if latest > earliest:
+        days = (latest - earliest) / 86400.0
+    else:
+        days = 1.0
     for h in range(0, 24):
         hours[h] /= days
     return hours
@@ -198,11 +233,13 @@ def GetPNGForUserHours(username, hours):
     '''
     labels = ['%02d' % h for h in range(0, 24)]
     data = [hours[h] for h in range(0, 24)]
-    chart = pychartdir.XYChart(500, 250)
+    chart = pychartdir.XYChart(700, 400)
     chart.addTitle('Total minutes per day for each hour for %s' % username)
-    chart.setPlotArea(30, 20, 450, 200)
+    chart.setPlotArea(45, 20, 600, 300)
     chart.addBarLayer(data)
     chart.xAxis().setLabels(labels)
+    chart.xAxis().setTitle('Hour during the day')
+    chart.yAxis().setTitle('Average minutes per hour per day')
     return chart.makeChart2(pychartdir.PNG)
 
 def GetTime(columns, row):
@@ -257,7 +294,7 @@ def ParseArgs():
     '''
     Read command line arguments into global variables
     '''
-    global port, log_dir
+    global port, log_dir, password
 
     opt_parser = optparse.OptionParser()
     opt_parser.add_option('-p', '--port', dest='port', default=__DEFAULT_PORT__,
@@ -265,14 +302,18 @@ def ParseArgs():
     opt_parser.add_option('-d', '--log-dir', dest='log_dir',
                           default=__DEFAULT_LOG_DIR__,
                           help='directory to search for logs in (default %s)' % __DEFAULT_LOG_DIR__)
+    opt_parser.add_option('--pw', '--password', dest='password',
+                          default=__DEFAULT_PASSWORD__,
+                          help='password (default %s)' % __DEFAULT_PASSWORD__)
     options, args = opt_parser.parse_args()
 
     if len(args):
         opt_parser.print_usage()
         sys.exit(1)
 
-    port = options.port
+    port = int(options.port)
     log_dir = options.log_dir
+    password = options.password
 
 def Main():
     '''
