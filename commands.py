@@ -6,6 +6,12 @@ Simple commands can go here. Complicated commands should go
 in their own modules.
 
 @author: Carlos E. Torchia <ctorchia87@gmail.com>
+
+(c) 2012 Carlos E. Torchia
+
+This software is licensed under the GNU GPL v2.
+It can be distributed freely under certain conditions; see fsf.org.
+There is no warranty, use at your own risk.
 '''
 
 import re

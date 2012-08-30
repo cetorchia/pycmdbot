@@ -2,6 +2,12 @@
 Gets bus times from Google.
 May need to be updated for other cities' transit systems.
 @author: Carlos E. Torchia <ctorchia87@gmail.com>
+
+(c) 2012 Carlos E. Torchia
+
+This software is licensed under the GNU GPL v2.
+It can be distributed freely under certain conditions; see fsf.org.
+There is no warranty, use at your own risk.
 '''
 import re
 import urllib
