@@ -34,7 +34,7 @@ __DEFAULT_LOG_FILE__ = os.path.join(os.getenv('HOME'), '.pycmdbot-log')
 
 __DEFAULT_SHOW__ = 'available'
 
-class PyCmdBot():
+class PyCmdBot:
     '''
     XMPP client that takes commands and logs friends' activity
     '''
