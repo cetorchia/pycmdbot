@@ -125,6 +125,10 @@ class PyCmdBot():
         @param: client
         @param: message
         '''
+        if message is None or message.getBody() is None:
+            print 'Message body is null'
+            return
+
         user = message.getFrom()
         username = user.getStripped()
         body = message.getBody().strip()
