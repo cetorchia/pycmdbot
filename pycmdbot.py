@@ -9,11 +9,6 @@ It can be distributed freely under certain conditions; see fsf.org.
 There is no warranty, use at your own risk.
 '''
 
-import re
-import os
-import sys
-import ConfigParser
-import optparse
 import traceback
 import csv
 import time
@@ -21,16 +16,6 @@ import time
 import xmpp
 
 import commands
-
-__DEFAULT_DOMAIN__ = 'gmail.com'
-__DEFAULT_HOSTNAME__ = 'talk.google.com'
-__DEFAULT_PORT__ = 5222
-__DEFAULT_RESOURCE__ = 'PyCmdBot'
-
-__DEFAULT_CONFIG_FILE__ = os.path.abspath(os.path.join(__file__, '..', 'conf', 'pycmdbot.cfg'))
-__DEFAULT_LOG_FILE__ = os.path.abspath(os.path.join(__file__, '..', 'log', 'pycmdbot.log.%d'))
-
-__DEFAULT_SHOW__ = 'available'
 
 class PyCmdBot:
     '''
@@ -187,104 +172,3 @@ class PyCmdBot:
             # Status update event
             self.log_writer.writerow([cur_time, username, None, update_type, show, status])
             self.log_fh.flush()
-
-def Main():
-    '''
-    Main method
-    '''
-    config_file = ParseArgs()
-    settings = ReadConfig(config_file)
-    bot = PyCmdBot(**settings)
-    bot.Run()
-
-def ReadConfig(config_file):
-    '''
-    @param config_file: filename of the config file
-    @return: a dict containing variables that you can use as kwargs to
-             PyCmdBot()
-    '''
-    defaults = {
-        'domain': __DEFAULT_DOMAIN__,
-        'hostname': __DEFAULT_HOSTNAME__,
-        'port': __DEFAULT_PORT__,
-        'resource': __DEFAULT_RESOURCE__,
-        'log_file': __DEFAULT_LOG_FILE__,
-        'log_presence': 'false',
-        'log_messages': 'false',
-        'accept_invites': 'false',
-        'all_commands': 'false',
-        'commands': '',
-        'show': __DEFAULT_SHOW__,
-        'status': '',
-    }
-    config = ConfigParser.RawConfigParser(defaults=defaults)
-    config.read(config_file)
-
-    settings = {
-        'domain': config.get('server', 'domain'),
-        'hostname': config.get('server', 'hostname'),
-        'port': config.get('server', 'port'),
-        'resource': config.get('bot', 'resource'),
-        'log_file': config.get('bot', 'log_file'),
-        'log_presence': config.getboolean('bot', 'log_presence'),
-        'log_messages': config.getboolean('bot', 'log_messages'),
-        'accept_invites': config.getboolean('bot', 'accept_invites'),
-        'all_commands': config.getboolean('bot', 'all_commands'),
-        'show': config.get('bot', 'show'),
-        'status': config.get('bot', 'status'),
-    }
-
-    # Timestamp the log file
-    if '%d' in settings['log_file']:
-        settings['log_file'] = settings['log_file'] % int(time.time())
-
-    # Parse the list of commands
-    commands_str = config.get('bot', 'commands').strip()
-    if commands_str:
-        settings['commands'] = re.split(r'\s*,\s*', commands_str)
-    else:
-        settings['commands'] = []
-
-    # Require username and password to be in config file
-    try:
-        settings['username'] = config.get('account', 'username')
-    except:
-        print >>sys.stderr, 'Username missing from %s' % config_file
-        sys.exit(1)
-    try:
-        settings['password'] = config.get('account', 'password')
-    except:
-        print >>sys.stderr, 'Password missing from %s' % config_file
-        sys.exit(1)
-
-    # Ensure valid command names
-    for cmd_name in settings['commands']:
-        if cmd_name not in commands.command_names:
-            print >>sys.stderr, 'Invalid command name: %s' % cmd_name
-            print >>sys.stderr, 'Valid command names:\n  %s' % \
-                                '\n  '.join(commands.command_names)
-            sys.exit(1)
-
-    return settings
-
-def ParseArgs():
-    '''
-    @return: config filename
-    '''
-    opt_parser = optparse.OptionParser()
-    opt_parser.add_option('-c', '--config', dest='config_file',
-                          help='specify alternate config file')
-    options, args = opt_parser.parse_args()
-
-    if args:
-        opt_parser.print_usage()
-        sys.exit(1)
-
-    config_file = options.config_file
-    if not config_file:
-        config_file = __DEFAULT_CONFIG_FILE__
-
-    return config_file
-
-if __name__ == '__main__':
-    Main()
