@@ -9,15 +9,15 @@ username=pycmdbot
 password=
 
 [bot]
-log_file=log/pycmdbot.log
+log_file=log/pycmdbot.log.%d
 log_presence=false
 log_messages=false
 
 accept_invites=true
 
 show=available
-status=
+status=hi there
 
 all_commands=true
-commands=
+commands=time,eval
 

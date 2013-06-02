@@ -2,9 +2,7 @@
 Google Talk bot that takes commands from chat users!
 And logs friends' status updates and messages.
 
-@author: Carlos E. Torchia <ctorchia87@gmail.com>
-
-(c) 2012 Carlos E. Torchia
+(c) 2012, 2013 Carlos E. Torchia <ctorchia87@gmail.com>
 
 This software is licensed under the GNU GPL v2.
 It can be distributed freely under certain conditions; see fsf.org.
@@ -29,8 +27,8 @@ __DEFAULT_HOSTNAME__ = 'talk.google.com'
 __DEFAULT_PORT__ = 5222
 __DEFAULT_RESOURCE__ = 'PyCmdBot'
 
-__DEFAULT_CONFIG_FILE__ = os.path.join(os.getenv('HOME'), '.pycmdbot')
-__DEFAULT_LOG_FILE__ = os.path.join(os.getenv('HOME'), '.pycmdbot-log')
+__DEFAULT_CONFIG_FILE__ = os.path.abspath(os.path.join(__file__, '..', 'conf', 'pycmdbot.cfg'))
+__DEFAULT_LOG_FILE__ = os.path.abspath(os.path.join(__file__, '..', 'log', 'pycmdbot.log.%d'))
 
 __DEFAULT_SHOW__ = 'available'
 
