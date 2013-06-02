@@ -1,11 +1,9 @@
 '''
 Serves PNG graphs that display chat activity.
-Takes pycmdbot log filename as GET request and serves a PNG graph
-analyzing the CSV data. 
+Takes /username/timeframe.png as GET request and serves a PNG graph
+analyzing chat activity. 
 
-@author: Carlos E. Torchia <ctorchia87@gmail.com>
-
-(c) 2012 Carlos E. Torchia
+(c) 2012, 2013 Carlos E. Torchia <ctorchia87@gmail.com>
 
 This software is licensed under the GNU GPL v2.
 It can be distributed freely under certain conditions; see fsf.org.
@@ -133,9 +131,16 @@ def GetUserHoursPNG(username, since_when):
 
 def GetUserHours(username, since_when):
     '''
+    TODO: This method should be separated into two methods:
+          1) One that takes a list of username-interval pairs, outputs mintues
+             for each hour
+          2) Another that parses each log file and generates a list of
+             user-pair intervals
+          This can be part of a much larger platform for analyzing
+          time-interval data, for example phone call logs.
     @param username: Username of user for whom to get stats
-    @param since_when: Timeframe. only consider status from this long ago. can be None
-                       for forever.
+    @param since_when: Timeframe. only consider status from this long ago. can
+                       be None for forever.
     Assumption: logs are in order of ascending timestamp
     @return: A dict mapping hour (0-23) to a number of minutes
     '''
@@ -197,12 +202,13 @@ def UpdateUserHours(hours, signed_on_since, current_status, columns, row):
     update_type = row[columns['Update Type']]
     show = row[columns['Show']]
     if update_type == 'unavailable' and current_status != 'unavailable':
-        # They have signed off, meaning they have been signed on since\
+        # They have signed off, meaning they have been signed on since
         # signed_on_since.
         UpdateUserHoursForInterval(hours, signed_on_since, now)
         signed_on_since = now
         current_status = update_type
     else:
+        # Either the just signed on, or they are still signed on.
         if current_status == 'unavailable' or current_status is None:
             signed_on_since = now
         current_status = show
@@ -216,15 +222,19 @@ def UpdateUserHoursForInterval(hours, signed_on_since, now):
     @param now: now
     @postcondition: minutes have been added to hour buckets
     '''
+    # Note that this will make each hour bucket in local time
     start_time = time.localtime(signed_on_since)
     start_hour = start_time.tm_hour
     start_min = start_time.tm_min
 
-    # Number of minutes since 12 am of start date
+    # How many minutes it has been since 12 am of start date that the user
+    # first signed on.
     minute = start_hour * 60 + start_min
-    # Number of minutes since 12 am of start date
+    # How many minutes it has been since 12 am of start date that the user
+    # was seen.
     last_min = (now - signed_on_since) / 60 + minute
 
+    # For each minute from start minute to end minute
     while minute < last_min:
         # Determine what hour of the day it is
         tm_hour = (minute / 60) % 24
@@ -234,6 +244,7 @@ def UpdateUserHoursForInterval(hours, signed_on_since, now):
 def GetPNGForUserHours(username, hours):
     '''
     @param username: Username of user for whom to get a stats PNG
+    @param hours: user hours dict hour => minutes
     @return: bytes of a PNG of a chart presenting the minutes the user is
              signed on in each hour of the day.
     '''
