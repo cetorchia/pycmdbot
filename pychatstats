@@ -1,0 +1,75 @@
+#!/usr/bin/env python2
+'''
+Produces PNG graphs that display chat activity for a given user and period.
+
+(c) 2012, 2013 Carlos E. Torchia <ctorchia87@gmail.com>
+
+This software is licensed under the GNU GPL v2.
+It can be distributed freely under certain conditions; see fsf.org.
+There is no warranty, use at your own risk.
+'''
+
+import sys
+import optparse
+
+import chat_stats
+
+__DEFAULT_LOG_DIR__ = '.'
+
+def Main():
+    '''
+    Main method
+    '''
+    command, options = ParseArgs()
+
+    chat_stats.log_dir = options.log_dir
+    username = options.username
+    if options.length:
+        length_hours = int(options.length) * 24
+    else:
+        length_hours = None
+
+    if 'get_usernames' == command:
+        if username or length_hours:
+            print >>sys.stderr, 'Username or length are not allowed.'
+            return 1
+        usernames = chat_stats.GetUsernames()
+        print '\n'.join(usernames)
+    else:
+        if not username:
+            print >>sys.stderr, 'Username is required.'
+            return 1
+        print chat_stats.GetUserHoursPNG(username, length_hours)
+
+def ParseArgs():
+    '''
+    Read command line arguments
+    '''
+    usage = '''Usage: %prog [options] <command>
+
+Commands:
+  get_usernames - Gets list of distinct usernames present in log files
+  chart_by_hour - Outputs a PNG image of a chart with number of minutes online
+                  for each hour of the day'''
+    opt_parser = optparse.OptionParser(usage=usage)
+    opt_parser.add_option('-u', '--username', dest='username',
+                          default=None,
+                          help='username for whom to report activity')
+    opt_parser.add_option('-l', '--length', dest='length',
+                          default=None,
+                          help='for how many days until now to report activity')
+    opt_parser.add_option('-d', '--log-dir', dest='log_dir',
+                          default=__DEFAULT_LOG_DIR__,
+                          help='directory to search for logs in (default %s)' % __DEFAULT_LOG_DIR__)
+    options, args = opt_parser.parse_args()
+
+    if len(args) != 1:
+        opt_parser.print_usage()
+        sys.exit(1)
+
+    command = args[0]
+
+    return command, options
+
+if __name__ == '__main__':
+    sys.exit(Main())
