@@ -6,7 +6,6 @@
 
 [account]
 username=pycmdbot
-password=
 
 [bot]
 log_file=log/pycmdbot.log.%d

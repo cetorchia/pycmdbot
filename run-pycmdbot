@@ -9,12 +9,13 @@ It can be distributed freely under certain conditions; see fsf.org.
 There is no warranty, use at your own risk.
 '''
 
+import time
 import re
 import os
 import sys
 import ConfigParser
 import optparse
-import time
+import getpass
 
 import commands
 from pycmdbot import PyCmdBot
@@ -35,6 +36,11 @@ def Main():
     '''
     config_file = ParseArgs()
     settings = ReadConfig(config_file)
+
+    # Daemonize
+    if os.fork() > 0:
+        sys.exit(0)
+
     bot = PyCmdBot(**settings)
     bot.Run()
 
@@ -93,9 +99,10 @@ def ReadConfig(config_file):
         print >>sys.stderr, 'Username missing from %s' % config_file
         sys.exit(1)
     try:
-        settings['password'] = config.get('account', 'password')
-    except:
-        print >>sys.stderr, 'Password missing from %s' % config_file
+        settings['password'] = getpass.getpass('Password for %s: ' % \
+                                               settings['username'])
+    except Exception, e:
+        print >>sys.stderr, 'Could not read password:',str(e)
         sys.exit(1)
 
     # Ensure valid command names
