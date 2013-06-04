@@ -66,7 +66,7 @@ class PyCmdBot:
         @postcondition: bot is connected to Google Talk with account, or an
                         exception has been thrown
         '''
-        self.client = xmpp.Client(self.domain, self.port)
+        self.client = xmpp.Client(self.domain, self.port,debug=[])
         if not self.client.connect(server=(self.hostname, self.port)):
             raise Exception('Could not connect to %s:%s' % (self.hostname, self.port))
         if not self.client.auth(self.username, self.password, self.resource):
