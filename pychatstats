@@ -45,7 +45,7 @@ def ParseArgs():
     '''
     Read command line arguments
     '''
-    usage = '''Usage: %prog [options] <command>
+    usage = '''%prog [options] <command>
 
 Commands:
   get_usernames - Gets list of distinct usernames present in log files

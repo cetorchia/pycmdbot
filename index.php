@@ -6,7 +6,9 @@
 // Licensed under GPLv2, no warranty.
 //
 
-exec('./pychatstats get_usernames -d log', $usernames);
+$PYTHONPATH = 'PYTHONPATH=~/lib/pychartdir';
+
+exec($PYTHONPATH . ' ./pychatstats get_usernames -d log', $usernames);
 
 if ( !isset( $_GET[ 'username' ] ) && !isset( $_GET[ 'period' ] ) ) {
     ?>
@@ -34,8 +36,8 @@ if ( !isset( $_GET[ 'username' ] ) && !isset( $_GET[ 'period' ] ) ) {
 }
 else if ( isset( $_GET[ 'username' ] ) ) {
     # Build the command line for generating the chart
-    $command_line = './pychatstats chart_by_hour -d log -u ';
-    $command_line .= $_GET[ 'username' ];
+    $command_line = 'PYTHONPATH=~/lib/pychartdir ./pychatstats chart_by_hour -d log -u ';
+    $command_line .= escapeshellarg( $_GET[ 'username' ] );
     if ( 'day' == $_GET[ 'period' ] ) {
         $command_line .= ' -l 1';
     }
@@ -45,5 +47,5 @@ else if ( isset( $_GET[ 'username' ] ) ) {
 
     # Run the command, output image to browser
     header( 'Content-Type: image/png' );
-    passthru( $command_line );
+    passthru( $PYTHONPATH . ' ' . $command_line );
 }

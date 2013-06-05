@@ -16,15 +16,7 @@ import csv
 import time
 import optparse
 
-# Import ChartDirectory
-pychartdir_path = os.path.abspath(os.path.join(__file__, '..', '..', 'ChartDirector', 'lib'))
-sys.path.append(pychartdir_path)
-try:
-    import pychartdir
-except ImportError, e:
-    print >>sys.stderr, 'Please install ChartDirector for Python in %s' % pychartdir_path
-    print >>sys.stderr, str(e)
-    sys.exit(1)
+import pychartdir
 
 email_re = re.compile(r'^([^@]+)@([^@]+)$')
 
