@@ -10,7 +10,7 @@ $PYTHONPATH = 'PYTHONPATH=~/lib/pychartdir';
 
 exec($PYTHONPATH . ' ./pychatstats get_usernames -d log', $usernames);
 
-if ( !isset( $_GET[ 'username' ] ) && !isset( $_GET[ 'period' ] ) ) {
+if ( !isset( $_GET[ 'username' ] ) && !isset( $_GET[ 'start_date' ] ) && !isset( $_GET[ 'end_date' ] ) ) {
     ?>
     <html>
     <head>
@@ -19,30 +19,35 @@ if ( !isset( $_GET[ 'username' ] ) && !isset( $_GET[ 'period' ] ) ) {
     <body>
     <h2>Chat User Availability Charts</h2>
     <p>Select a user:</p>
-    <ul>
+    <ol>
     <?php
     foreach ( $usernames as $username ) {
         ?>
         <li><a href="./?username=<?= $username ?>"><?= $username ?></a>
-            <a href="./?username=<?= $username ?>&period=day">last day</a>,
-            <a href="./?username=<?= $username ?>&period=week">last week</a>
+            <a href="./?username=<?= $username ?>&start_date=<?= date('Y-m-d') ?>">today</a>,
+            <a href="./?username=<?= $username ?>&start_date=<?= date('Y-m-d', strtotime('-1 day')) ?>&end_date=<?= date('Y-m-d') ?>">yesterday</a>,
+            <a href="./?username=<?= $username ?>&start_date=<?= date('Y-m-d', strtotime('last sunday')) ?>&end_date=<?= date('Y-m-d', strtotime('next saturday')) ?>">this week</a>
+            <a href="./?username=<?= $username ?>&start_date=<?= date('Y-m-d', strtotime('last sunday - 1 week')) ?>&end_date=<?= date('Y-m-d', strtotime('last saturday')) ?>">last week</a>
+            <a href="./?username=<?= $username ?>&start_date=<?= date('Y-m-d', strtotime('-30 days + 1 day')) ?>">last 30 days</a>
         <?php
     }
     ?>
-    </ul>
+    </ol>
     </body>
     </html>
     <?php
 }
 else if ( isset( $_GET[ 'username' ] ) ) {
     # Build the command line for generating the chart
-    $command_line = 'PYTHONPATH=~/lib/pychartdir ./pychatstats chart_by_hour -d log -u ';
-    $command_line .= escapeshellarg( $_GET[ 'username' ] );
-    if ( 'day' == $_GET[ 'period' ] ) {
-        $command_line .= ' -l 1';
+    $command_line = 'PYTHONPATH=~/lib/pychartdir ./pychatstats chart_by_hour -d log';
+    $command_line .= ' -u ' . escapeshellarg( $_GET[ 'username' ] );
+
+    if ( isset( $_GET[ 'start_date' ] ) ) {
+        $command_line .= ' -s ' . escapeshellarg( $_GET[ 'start_date' ] );
     }
-    else if ( 'week' == $_GET[ 'period' ] ) {
-        $command_line .= ' -l 7';
+
+    if ( isset( $_GET[ 'end_date' ] ) ) {
+        $command_line .= ' -e ' . escapeshellarg( $_GET[ 'end_date' ] );
     }
 
     # Run the command, output image to browser

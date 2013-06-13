@@ -46,20 +46,20 @@ def GetUsernames():
     usernames.sort(key=lambda username: -count.get(username))
     return usernames
 
-def GetUserHoursPNG(username, since_when):
+def GetUserHoursPNG(username, start_time, end_time):
     '''
     @param username: Username of user for whom to get stats PNG e.g. 'pycmdbot'
-    @param since_when: Timeframe. only consider status from this long ago. can be None
-                       for forever.
+    @param start_time Time at which to start calculating user's time online
+    @param end_time Time at which to stop calculating user's time online
     @return: A string of bytes of the PNG representing a stats graph for the
              given user. This presents the minutes they are signed on in each
              hour of each day.
     '''
-    hours = GetUserHours(username, since_when)
+    hours = GetUserHours(username, start_time, end_time)
     png_data = GetPNGForUserHours(username, hours)
     return png_data
 
-def GetUserHours(username, since_when):
+def GetUserHours(username, start_time, end_time):
     '''
     TODO: This method should be separated into two methods:
           1) One that takes a list of username-interval pairs, outputs mintues
@@ -69,8 +69,8 @@ def GetUserHours(username, since_when):
           This can be part of a much larger platform for analyzing
           time-interval data, for example phone call logs.
     @param username: Username of user for whom to get stats
-    @param since_when: Timeframe. only consider status from this long ago. can
-                       be None for forever.
+    @param start_time Time at which to start calculating user's time online
+    @param end_time Time at which to stop calculating user's time online
     Assumption: logs are in order of ascending timestamp
     @return: A dict mapping hour (0-23) to a number of minutes
     '''
@@ -79,9 +79,6 @@ def GetUserHours(username, since_when):
              13:0, 14:0, 15:0, 16:0, 17:0, 18:0, 19:0, 20:0, 21:0, 22:0, 23:0}
     earliest = ()
     latest = None
-    if since_when:
-        # Get when to start in seconds since Epoch
-        since_when = time.time() - since_when * 3600.0
     for log_file in log_files:
         reader = csv.reader(open(log_file, 'rb'))
         try:
@@ -95,7 +92,7 @@ def GetUserHours(username, since_when):
         try:
             for row in reader:
                 now = GetTime(columns, row)
-                if now < since_when:
+                if now < start_time or now > end_time:
                     continue
                 if now < earliest: earliest = now
                 if now > latest: latest = now
@@ -109,7 +106,7 @@ def GetUserHours(username, since_when):
         except csv.Error, e:
             print >>sys.stderr, 'Error: ', str(e)
     if latest > earliest:
-        days = (latest - earliest) / 86400.0
+        days = max((latest - earliest) / 86400.0, 1.0)
     else:
         days = 1.0
     for h in range(0, 24):

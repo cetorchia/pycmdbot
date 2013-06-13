@@ -9,6 +9,7 @@ It can be distributed freely under certain conditions; see fsf.org.
 There is no warranty, use at your own risk.
 '''
 
+import time
 import sys
 import optparse
 
@@ -23,23 +24,39 @@ def Main():
     command, options = ParseArgs()
 
     chat_stats.log_dir = options.log_dir
-    username = options.username
-    if options.length:
-        length_hours = int(options.length) * 24
-    else:
-        length_hours = None
 
     if 'get_usernames' == command:
-        if username or length_hours:
+        if options.username or options.start_date or options.end_date:
             print >>sys.stderr, 'Username or length are not allowed.'
             return 1
+
         usernames = chat_stats.GetUsernames()
         print '\n'.join(usernames)
-    else:
-        if not username:
+
+    elif 'chart_by_hour' == command:
+        if not options.username:
             print >>sys.stderr, 'Username is required.'
             return 1
-        print chat_stats.GetUserHoursPNG(username, length_hours)
+        else:
+            username = options.username
+
+        if (type(options.start_date) is str):
+            start_time = time.mktime(time.strptime(options.start_date,
+                                                   '%Y-%m-%d'))
+        else:
+            start_time = options.start_date
+
+        if (type(options.end_date) is str):
+            end_time = time.mktime(time.strptime(options.end_date,
+                                                 '%Y-%m-%d')) + 86399
+        else:
+            end_time = options.end_date
+
+        print chat_stats.GetUserHoursPNG(username, start_time, end_time)
+
+    else:
+        print >>sys.stderr, 'Unknown command %s' % command
+        return 1
 
 def ParseArgs():
     '''
@@ -55,9 +72,12 @@ Commands:
     opt_parser.add_option('-u', '--username', dest='username',
                           default=None,
                           help='username for whom to report activity')
-    opt_parser.add_option('-l', '--length', dest='length',
-                          default=None,
-                          help='for how many days until now to report activity')
+    opt_parser.add_option('-s', '--start-date', dest='start_date',
+                          default=None, # Default is beginning of time
+                          help='Start date from which to report activity')
+    opt_parser.add_option('-e', '--end-date', dest='end_date',
+                          default=(),   # Default is end of time
+                          help='End date from which to report activity')
     opt_parser.add_option('-d', '--log-dir', dest='log_dir',
                           default=__DEFAULT_LOG_DIR__,
                           help='directory to search for logs in (default %s)' % __DEFAULT_LOG_DIR__)
