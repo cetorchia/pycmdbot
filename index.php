@@ -21,25 +21,42 @@ if ( !isset( $_GET[ 'username' ] ) && !isset( $_GET[ 'start_date' ] ) && !isset(
     <p>Select a user:</p>
     <ol>
     <?php
+
+    $today = date( 'Y-m-d' );
+    $yesterday = date( 'Y-m-d', strtotime( '-1 day' ) );
+    $this_week_start = date( 'Y-m-d', strtotime( 'this saturday - 6 days' ) );
+    $this_week_end = date( 'Y-m-d', strtotime( 'this saturday' ) );
+    $last_week_start = date( 'Y-m-d', strtotime( 'this saturday - 6 days - 1 week' ) );
+    $last_week_end = date( 'Y-m-d', strtotime( 'this saturday - 1 week' ) );
+    $one_month_ago = date( 'Y-m-d', strtotime( '-30 days + 1 day' ) );
+
+    // Loop through each username and display links to their
+    // activity charts.
     foreach ( $usernames as $username ) {
         ?>
-        <li><a href="./?username=<?= $username ?>"><?= $username ?></a>
-            <a href="./?username=<?= $username ?>&start_date=<?= date('Y-m-d') ?>">today</a>,
-            <a href="./?username=<?= $username ?>&start_date=<?= date('Y-m-d', strtotime('-1 day')) ?>&end_date=<?= date('Y-m-d') ?>">yesterday</a>,
-            <a href="./?username=<?= $username ?>&start_date=<?= date('Y-m-d', strtotime('last sunday')) ?>&end_date=<?= date('Y-m-d', strtotime('next saturday')) ?>">this week</a>
-            <a href="./?username=<?= $username ?>&start_date=<?= date('Y-m-d', strtotime('last sunday - 1 week')) ?>&end_date=<?= date('Y-m-d', strtotime('last saturday')) ?>">last week</a>
-            <a href="./?username=<?= $username ?>&start_date=<?= date('Y-m-d', strtotime('-30 days + 1 day')) ?>">last 30 days</a>
+        <li><b><?= $username ?>:</b>
+            <a href="./?username=<?= $username ?>">all time</a> &nbsp;
+            <a href="./?username=<?= $username ?>&start_date=<?= $today ?>">today</a> &nbsp;
+            <a href="./?username=<?= $username ?>&start_date=<?= $yesterday ?>&end_date=<?= $yesterday ?>">yesterday</a> &nbsp;
+            <a href="./?username=<?= $username ?>&start_date=<?= $this_week_start ?>&end_date=<?= $this_week_end ?>">this week</a> &nbsp;
+            <a href="./?username=<?= $username ?>&start_date=<?= $last_week_start ?>&end_date=<?= $last_week_end ?>">last week</a> &nbsp;
+            <a href="./?username=<?= $username ?>&start_date=<?= $one_month_ago ?>">last 30 days</a> &nbsp;
         <?php
     }
     ?>
     </ol>
+    <p>Most recent timestamp:
+        <?php
+        passthru( 'date +"%F %T" -d @$(cat log/* | tail -n 1 | awk -F . \'{ print $1 }\')' );
+        ?>
+    </p>
     </body>
     </html>
     <?php
 }
 else if ( isset( $_GET[ 'username' ] ) ) {
     # Build the command line for generating the chart
-    $command_line = 'PYTHONPATH=~/lib/pychartdir ./pychatstats chart_by_hour -d log';
+    $command_line = './pychatstats chart_by_hour -d log';
     $command_line .= ' -u ' . escapeshellarg( $_GET[ 'username' ] );
 
     if ( isset( $_GET[ 'start_date' ] ) ) {
