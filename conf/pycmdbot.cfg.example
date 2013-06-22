@@ -8,6 +8,8 @@
 username=pycmdbot
 
 [bot]
+#error_log=pycmdbot.err
+
 log_file=log/pycmdbot.log.%d
 log_presence=false
 log_messages=false

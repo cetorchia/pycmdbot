@@ -24,11 +24,10 @@ class PyCmdBot:
 
     def __init__(self, domain, hostname, port, resource,
                  username, password,
+                 error_log_file,
                  log_file, log_presence, log_messages,
                  accept_invites, show, status,
                  all_commands, commands):
-        '''
-        '''
         self.domain = domain
         self.hostname = hostname
         self.port = port

@@ -13,6 +13,7 @@ import time
 import re
 import os
 import sys
+import traceback
 import ConfigParser
 import optparse
 import getpass
@@ -24,6 +25,8 @@ __DEFAULT_DOMAIN__ = 'gmail.com'
 __DEFAULT_HOSTNAME__ = 'talk.google.com'
 __DEFAULT_PORT__ = 5222
 __DEFAULT_RESOURCE__ = 'PyCmdBot'
+
+__DEFAULT_ERROR_LOG_FILE__ = os.path.abspath(os.path.join(__file__, '..', 'pycmdbot.err'))
 
 __DEFAULT_CONFIG_FILE__ = os.path.abspath(os.path.join(__file__, '..', 'conf', 'pycmdbot.cfg'))
 __DEFAULT_LOG_FILE__ = os.path.abspath(os.path.join(__file__, '..', 'log', 'pycmdbot.log.%d'))
@@ -41,8 +44,14 @@ def Main():
     if os.fork() > 0:
         sys.exit(0)
 
-    bot = PyCmdBot(**settings)
-    bot.Run()
+    # Now run the command bot
+    try:
+        bot = PyCmdBot(**settings)
+        bot.Run()
+    except:
+        fh = open(settings['error_log_file'], 'ab')
+        traceback.print_exc(file=fh)
+        fh.close()
 
 def ReadConfig(config_file):
     '''
@@ -55,6 +64,7 @@ def ReadConfig(config_file):
         'hostname': __DEFAULT_HOSTNAME__,
         'port': __DEFAULT_PORT__,
         'resource': __DEFAULT_RESOURCE__,
+        'error_log_file': __DEFAULT_ERROR_LOG_FILE__,
         'log_file': __DEFAULT_LOG_FILE__,
         'log_presence': 'false',
         'log_messages': 'false',
@@ -71,7 +81,8 @@ def ReadConfig(config_file):
         'domain': config.get('server', 'domain'),
         'hostname': config.get('server', 'hostname'),
         'port': config.get('server', 'port'),
-        'resource': config.get('bot', 'resource'),
+        'resource': config.get('server', 'resource'),
+        'error_log_file': config.get('bot', 'error_log_file'),
         'log_file': config.get('bot', 'log_file'),
         'log_presence': config.getboolean('bot', 'log_presence'),
         'log_messages': config.getboolean('bot', 'log_messages'),
@@ -121,6 +132,7 @@ def ParseArgs():
     '''
     opt_parser = optparse.OptionParser()
     opt_parser.add_option('-c', '--config', dest='config_file',
+                          default=__DEFAULT_CONFIG_FILE__,
                           help='specify alternate config file')
     options, args = opt_parser.parse_args()
 
@@ -128,11 +140,7 @@ def ParseArgs():
         opt_parser.print_usage()
         sys.exit(1)
 
-    config_file = options.config_file
-    if not config_file:
-        config_file = __DEFAULT_CONFIG_FILE__
-
-    return config_file
+    return options.config_file
 
 if __name__ == '__main__':
     Main()
