@@ -6,6 +6,8 @@
 // Licensed under GPLv2, no warranty.
 //
 
+require_once( 'authenticate.php' );
+
 $PYTHONPATH = 'PYTHONPATH=~/lib/pychartdir';
 
 exec($PYTHONPATH . ' ./pychatstats get_usernames -d log', $usernames);
